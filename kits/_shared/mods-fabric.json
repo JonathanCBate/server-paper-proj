@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Fabric API",
+    "slug": "fabric-api",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "Lithium",
+    "slug": "lithium",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "FerriteCore",
+    "slug": "ferrite-core",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "Krypton",
+    "slug": "krypton",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "BadOptimizations",
+    "slug": "badoptimizations",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "Chunky",
+    "slug": "chunky",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "FabricProxy-Lite",
+    "slug": "fabricproxy-lite",
+    "loaders": ["fabric"]
+  },
+  {
+    "name": "Simple Voice Chat",
+    "slug": "simple-voice-chat",
+    "loaders": ["fabric"]
+  }
+]

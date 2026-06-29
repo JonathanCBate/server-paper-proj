@@ -4,12 +4,15 @@ description: "Proxy with two Paper backends — good for a small network"
 default_server: paper-lobby
 servers:
   - id: velocity
+    name: multi-proxy
     type: velocity
     port: 25565
   - id: paper-lobby
+    name: multi-lobby
     type: paper
     port: 25566
   - id: paper-survival
+    name: multi-survival
     type: paper
     port: 25567
 plugin_bundles:

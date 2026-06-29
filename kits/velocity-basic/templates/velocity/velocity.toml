@@ -8,7 +8,7 @@ prevent-client-proxy-connections = false
 player-info-forwarding-mode = "none"
 announce-forge = false
 kick-existing-players = false
-ping-passthrough = "DISABLED"
+ping-passthrough = "ALL"
 enable-player-address-logging = true
 
 [servers]

@@ -34,9 +34,12 @@ download_modrinth() {
   local slug="$1"
   local dest="$2"
   local loaders_json="$3"
-  local encoded
-  encoded="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$loaders_json")"
-  local url="https://api.modrinth.com/v2/project/${slug}/version?loaders=${encoded}"
+  local mc_version="${MC_VERSION:-}"
+  local query
+  query="$(python3 -c 'import urllib.parse,sys,json; loaders=json.loads(sys.argv[1]); gv=json.loads(sys.argv[2]) if sys.argv[2] else None; q={"loaders": loaders}; 
+if gv: q["game_versions"]=gv
+print(urllib.parse.urlencode({k: json.dumps(v) for k,v in q.items()}))' "$loaders_json" "${mc_version:+[\"$mc_version\"]}")"
+  local url="https://api.modrinth.com/v2/project/${slug}/version?${query}"
   local response
   response="$(curl -fsSL "$url")"
   local download_url
@@ -44,7 +47,7 @@ download_modrinth() {
   if [[ -z "$download_url" || "$download_url" == "null" ]]; then
     download_url="$(echo "$response" | jq -r '.[0].files[0].url')"
   fi
-  [[ -n "$download_url" && "$download_url" != "null" ]] || die "Modrinth download not found for: $slug"
+  [[ -n "$download_url" && "$download_url" != "null" ]] || die "Modrinth download not found for: ${slug} (MC ${mc_version:-any})"
   curl -fsSL -o "$dest" "$download_url"
 }
 

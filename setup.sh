@@ -76,6 +76,7 @@ main() {
   fi
 
   resolve_mc_version
+  resolve_velocity_version
   require_java_for_mc "$MC_VERSION"
   save_env_file
   export MC_VERSION MEMORY VELOCITY_VERSION CONSOLE_MODE

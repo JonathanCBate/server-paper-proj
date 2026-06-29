@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Attach to a kit's tmux console session.
+# Attach to a kit's server consoles (lists sessions or attaches to one server).
 
 set -euo pipefail
 
@@ -9,27 +9,14 @@ source "${SCRIPT_DIR}/lib/common.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/console.sh"
 
-kit_id="${1:?Usage: ./scripts/attach-kit.sh <kit> [server-id]}"
-
-if ! has_tmux; then
-  die "tmux is not installed. Install with: brew install tmux"
-fi
-
-session="$(kit_session "$kit_id")"
-
-if ! tmux has-session -t "$session" 2>/dev/null; then
-  die "No tmux session '${session}'. Start servers first: ./scripts/start-kit.sh ${kit_id}"
-fi
+kit_id="${1:?Usage: ./scripts/attach-kit.sh <kit> [server-id-or-name]}"
 
 if [[ $# -ge 2 ]]; then
-  local_sid="$2"
-  if ! server_window_running "$kit_id" "$local_sid"; then
-    die "Window '${local_sid}' not found in session '${session}'"
-  fi
-  echo "Attaching to ${local_sid} (Ctrl-b d to detach)..."
-  exec tmux attach -t "${session}:${local_sid}"
+  local_query="$2"
+  server_json="$(find_server_json "$kit_id" "$local_query")" || \
+    die "Server '${local_query}' not found in kit '${kit_id}'"
+  unique_name="$(server_unique_name "$kit_id" "$server_json")"
+  attach_server_console "$unique_name"
 fi
 
 print_console_help "$kit_id"
-echo "Attaching to session ${session} (Ctrl-b d to detach)..."
-exec tmux attach -t "$session"

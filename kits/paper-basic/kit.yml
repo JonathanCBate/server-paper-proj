@@ -3,6 +3,7 @@ name: "Basic Paper"
 description: "Single Paper server — good for a small survival SMP"
 servers:
   - id: paper
+    name: survival-main
     type: paper
     port: 25565
 plugin_bundles:

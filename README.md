@@ -4,8 +4,9 @@ One command to set up a Paper or Velocity Minecraft server with essential plugin
 
 ## Prerequisites
 
-- **Java 21+** for legacy versions (`1.21.x` and below)
-- **Java 25+** for 2026 drop releases (`26.1`, `26.1.2`, etc.)
+- **Java 17** for Minecraft `1.18.x` – `1.20.4`
+- **Java 21** for Minecraft `1.20.5` – `1.21.x`
+- **Java 25** for 2026 drop releases (`26.1`, etc.)
 - **curl** — download server JARs and plugins
 - **jq** — parse manifests
 - **ruby** — parse kit YAML (built into macOS)
@@ -23,9 +24,9 @@ Mojang changed versioning in 2026 from the old `1.x` scheme to **year-based drop
 | Drop patch | `26.1.1` | First hotfix for that drop |
 | Drop hotfix | `26.1.2` | Second hotfix for that drop |
 
-This project queries the [PaperMC API](https://api.papermc.io) for available versions. Set `MC_VERSION=latest` in `.env` (the default) to always use the newest stable Paper build.
+This project queries the [PaperMC downloads API](https://papermc.io/downloads) (`fill.papermc.io`) for available versions. Set `MC_VERSION=latest` in `.env` (the default) to always use the newest **supported** Paper build (currently a 26.x drop release such as `26.1.2`).
 
-If you request a version that Paper has not published yet (e.g. `26.1.2` before it ships), setup will fail with a clear message and suggest using `latest`.
+All Paper versions from `1.7.10` through the latest drop are available — pick one in the setup wizard or pass `--mc-version`.
 
 ## Quick start
 
@@ -36,7 +37,8 @@ If you request a version that Paper has not published yet (e.g. `26.1.2` before 
 The interactive wizard walks you through:
 
 1. Choosing a starter kit
-2. Minecraft version (default `latest` — resolved from PaperMC)
+2. Naming each server (consoles, LuckPerms, attach commands)
+3. Minecraft version (default `latest` — resolved from PaperMC)
 3. Memory per server (default `2G`)
 4. Setup only or setup + start
 
@@ -49,7 +51,8 @@ No kit name required — just run the script and follow the prompts.
 | `paper-basic` | Single Paper survival server | `localhost:25565` |
 | `velocity-basic` | Velocity proxy only | `localhost:25565` |
 | `velocity-paper` | Velocity + one Paper backend (lobby) | `localhost:25565` |
-| `velocity-multi` | Velocity + lobby + survival backends | `localhost:25565` |
+| `velocity-multi` | Velocity + lobby + survival Paper backends | `localhost:25565` |
+| `velocity-fabric` | Velocity + optimized Fabric lobby + survival | `localhost:25565` |
 
 ## Included plugins
 
@@ -60,12 +63,33 @@ No kit name required — just run the script and follow the prompts.
 - **EssentialsX** — `/home`, `/spawn`, `/tpa`, etc.
 - **Vault** — economy/permissions API
 - **PlaceholderAPI** — placeholders
+- **Simple Voice Chat** — proximity voice chat (players need the [client mod](https://modrinth.com/mod/simple-voice-chat) too)
 
 ### Velocity proxy
 
 - **LuckPerms-Velocity** — proxy-side permissions
+- **Simple Voice Chat** — routes voice between backend servers on a network
 
 Customize plugins in [`kits/_shared/plugins-paper.json`](kits/_shared/plugins-paper.json) and [`kits/_shared/plugins-velocity.json`](kits/_shared/plugins-velocity.json).
+
+### Fabric servers (`velocity-fabric`)
+
+Server-side optimization mods (players join with a **vanilla client** matching your MC version — no mods required on the client):
+
+| Mod | Purpose |
+|-----|---------|
+| **Fabric API** | Required library |
+| **Lithium** | Physics, mob AI, and tick optimizations |
+| **FerriteCore** | Lower RAM usage |
+| **Krypton** | Network stack optimizations |
+| **BadOptimizations** | Miscellaneous engine fixes |
+| **Chunky** | World pre-generation (`/chunky start`) |
+| **FabricProxy-Lite** | Velocity modern forwarding on Fabric backends |
+| **Simple Voice Chat** | Proximity voice chat (install the client mod to talk) |
+
+Customize mods in [`kits/_shared/mods-fabric.json`](kits/_shared/mods-fabric.json).
+
+**8 GB host tip:** allocate ~`1G` to the proxy and ~`5G`–`6G` per Fabric backend (`--memory 5G`), or run the proxy on a separate small VPS.
 
 ## Non-interactive usage
 
@@ -92,24 +116,61 @@ Skip the wizard by passing a kit name:
 # Start after setup-only
 ./scripts/start-kit.sh paper-basic
 
-# Attach to live consoles (tmux — one window per server/proxy)
+# Attach to a server's live console by unique name
+./scripts/attach-server.sh multi-lobby
+
+# List consoles for a kit
 ./scripts/attach-kit.sh velocity-multi
-./scripts/attach-kit.sh velocity-multi paper-lobby   # one server only
 
 # Stop all servers in a kit
 ./scripts/stop-kit.sh paper-basic
+
+# Stop everything — all kits, tmux sessions, and Minecraft ports
+./stop-all.sh
 ```
 
 ### Live consoles (tmux)
 
-By default, servers start in a **tmux** session with one window per server/proxy — like `screen`, but easier to manage.
+Each server has a **unique name** and its own tmux session (like a dedicated `screen` per server).
 
-| Command | What it does |
-|---------|----------------|
-| `./scripts/attach-kit.sh <kit>` | Attach to all servers — switch with `Ctrl-b` then `0`, `1`, `2` |
-| `./scripts/attach-kit.sh <kit> <server>` | Attach to one server (e.g. `paper-lobby`) |
-| `Ctrl-b d` | Detach — servers keep running |
-| `Ctrl-b n` / `Ctrl-b p` | Next / previous server window |
+| Server name (velocity-multi) | tmux session | Attach |
+|------------------------------|--------------|--------|
+| `multi-proxy` | `mc-multi-proxy` | `./scripts/attach-server.sh multi-proxy` |
+| `multi-lobby` | `mc-multi-lobby` | `./scripts/attach-server.sh multi-lobby` |
+| `multi-survival` | `mc-multi-survival` | `./scripts/attach-server.sh multi-survival` |
+
+```bash
+# List all consoles for a kit
+./scripts/attach-kit.sh velocity-multi
+
+# Attach to one server by its unique name
+./scripts/attach-server.sh multi-lobby
+```
+
+Your chosen names are used for:
+
+- **Server folders** — `servers/<kit>/<your-name>/`
+- **tmux sessions** — `mc-<your-name>`
+- **LuckPerms** — `server-name` in config
+- **Velocity** — `/server <your-name>` routing
+
+During `./setup.sh`, the wizard prompts for each name. Defaults come from `kit.yml` if you press Enter.
+
+Set default names in `kits/<kit>/kit.yml` (optional — wizard overrides are saved to `servers/<kit>/.server-names.json`):
+
+```yaml
+servers:
+  - id: paper-lobby
+    name: multi-lobby    # default suggestion in wizard
+    type: paper
+    port: 25566
+```
+
+If you rename servers and re-run setup, remove old folders under `servers/<kit>/` that used the previous names.
+
+| Keys | Action |
+|------|--------|
+| `Ctrl-b d` | Detach — server keeps running |
 
 Install tmux if needed: `brew install tmux`
 
@@ -141,6 +202,14 @@ servers/              # Generated at runtime (gitignored)
 
 Velocity kits auto-generate a `forwarding.secret` shared between the proxy and Paper backends. Paper backends run with `online-mode=false`; authentication is handled by the proxy.
 
+**Server list version** — Velocity is configured with `ping-passthrough = "ALL"` so the multiplayer list shows your Paper backend version (e.g. `26.1.2`) instead of Velocity's default `1.21.11` ping response.
+
+**26.x clients** — Velocity `3.4.0` only accepts clients through `1.21.11`. For `26.1.2` backends, setup auto-downloads **Velocity `3.5.0-SNAPSHOT`**. Set `VELOCITY_VERSION=` in `.env` to override.
+
+### Fabric + Velocity forwarding
+
+Fabric backends run with `online-mode=false`; Velocity handles authentication. **FabricProxy-Lite** is pre-configured with the shared `forwarding.secret`. Players must connect through the proxy (`localhost:25565`), not directly to backend ports.
+
 ## LuckPerms network sync (Velocity kits)
 
 Velocity kits (`velocity-paper`, `velocity-multi`, `velocity-basic`) configure **LuckPerms** to sync permissions across every server in the network:
@@ -149,7 +218,7 @@ Velocity kits (`velocity-paper`, `velocity-multi`, `velocity-basic`) configure *
 |---------|----------------|
 | **Shared H2 database** | One permission database at `servers/<kit>/.luckperms/` — all servers read/write the same data |
 | **`messaging-service: pluginmsg`** | Changes propagate instantly via Velocity's plugin messaging channel |
-| **Unique `server-name`** | Each server (`velocity`, `paper-lobby`, `paper-survival`) is tracked separately for context-specific permissions |
+| **Unique `server-name`** | Each server's `name` in `kit.yml` (e.g. `multi-lobby`) — used for LuckPerms context and tmux sessions |
 
 ### How to use it
 
@@ -174,7 +243,13 @@ For larger networks or multiple hosts, switch all `plugins/LuckPerms/config.yml`
 
 ## Troubleshooting
 
-**Java version error** — Install Java 21+: `java -version`
+**Java version error** — Setup auto-detects the right JDK from Homebrew (`openjdk@17`, `openjdk@21`, `openjdk@25`). Install the version you need:
+
+```bash
+brew install openjdk@25   # for 26.x drop releases
+brew install openjdk@21   # for 1.20.5 – 1.21.x
+brew install openjdk@17   # for 1.18.x – 1.20.4
+```
 
 **Port already in use** — Stop existing servers or change ports in `kits/<kit>/kit.yml`
 

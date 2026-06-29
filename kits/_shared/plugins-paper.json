@@ -32,5 +32,12 @@
     "source": "modrinth",
     "slug": "placeholderapi",
     "loaders": ["paper"]
+  },
+  {
+    "name": "Simple Voice Chat",
+    "file": "SimpleVoiceChat.jar",
+    "source": "modrinth",
+    "slug": "simple-voice-chat",
+    "loaders": ["paper"]
   }
 ]

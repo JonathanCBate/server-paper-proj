@@ -1,0 +1,21 @@
+id: velocity-fabric
+name: "Velocity + Fabric network"
+description: "Proxy with optimized Fabric lobby + survival (Lithium, FerriteCore, FabricProxy-Lite)"
+default_server: fabric-lobby
+servers:
+  - id: velocity
+    name: fabric-proxy
+    type: velocity
+    port: 25565
+  - id: fabric-lobby
+    name: fabric-lobby
+    type: fabric
+    port: 25566
+  - id: fabric-survival
+    name: fabric-survival
+    type: fabric
+    port: 25567
+plugin_bundles:
+  velocity: velocity
+mod_bundles:
+  fabric: fabric

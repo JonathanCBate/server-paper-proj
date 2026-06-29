@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tmux-based attachable consoles for server processes.
+# Tmux-based attachable consoles — one session per unique server name.
 
 set -euo pipefail
 
@@ -7,10 +7,6 @@ CONSOLE_MODE="${CONSOLE_MODE:-tmux}"
 
 has_tmux() {
   command -v tmux >/dev/null 2>&1
-}
-
-kit_session() {
-  echo "mc-${1}"
 }
 
 resolve_console_mode() {
@@ -28,106 +24,107 @@ resolve_console_mode() {
   esac
 }
 
-server_window_running() {
-  local kit_id="$1"
-  local sid="$2"
+server_session_running() {
+  local unique_name="$1"
   local session
-  session="$(kit_session "$kit_id")"
-  tmux has-session -t "$session" 2>/dev/null || return 1
-  tmux list-windows -t "$session" -F '#{window_name}' 2>/dev/null | grep -qx "$sid"
+  session="$(server_session "$unique_name")"
+  tmux has-session -t "$session" 2>/dev/null
 }
 
 start_server_tmux() {
   local kit_id="$1"
   local server_json="$2"
-  local sid sdir session java_cmd
+  local sid sdir unique_name session java_cmd sport stype
 
   sid="$(echo "$server_json" | jq -r '.id')"
+  stype="$(echo "$server_json" | jq -r '.type')"
+  unique_name="$(server_unique_name "$kit_id" "$server_json")"
   sdir="$(server_dir "$kit_id" "$sid")"
-  session="$(kit_session "$kit_id")"
+  session="$(server_session "$unique_name")"
 
   ensure_dir "${sdir}/logs"
 
-  if server_window_running "$kit_id" "$sid"; then
-    log_warn "${sid} is already running in tmux window '${sid}'"
-    return 0
+  if server_session_running "$unique_name"; then
+    log_warn "${unique_name} tmux session already exists — stopping it before restart"
+    stop_server_tmux "$unique_name"
+    sleep 2
   fi
 
-  java_cmd="java -Xms${MEMORY} -Xmx${MEMORY} -jar server.jar --nogui 2>&1 | tee -a console.log"
-
-  log_info "Starting ${sid} in tmux window '${sid}'..."
-
-  if tmux has-session -t "$session" 2>/dev/null; then
-    tmux new-window -t "$session" -n "$sid" -c "$sdir"
-    tmux send-keys -t "${session}:${sid}" "$java_cmd" Enter
-  else
-    tmux new-session -d -s "$session" -n "$sid" -c "$sdir"
-    tmux send-keys -t "${session}:${sid}" "$java_cmd" Enter
+  sport="$(echo "$server_json" | jq -r '.port')"
+  if port_is_listening "$sport"; then
+    log_warn "Port ${sport} in use — freeing it for ${unique_name}"
+    kill_port_listeners "$sport"
+    sleep 2
   fi
 
-  log_ok "${sid} started in tmux"
+  ensure_port_available "$sport" "$unique_name"
+
+  java_cmd="$(server_java_cmd "$stype")"
+
+  log_info "Starting '${unique_name}' in tmux session '${session}'..."
+  tmux new-session -d -s "$session" -n "$unique_name" -c "$sdir"
+  tmux send-keys -t "$session" "$java_cmd" Enter
 }
 
 stop_server_tmux() {
-  local kit_id="$1"
-  local sid="$2"
+  local unique_name="$1"
   local session
-  session="$(kit_session "$kit_id")"
+  session="$(server_session "$unique_name")"
 
-  if ! server_window_running "$kit_id" "$sid"; then
-    log_warn "${sid} tmux window not found, skipping"
+  if ! server_session_running "$unique_name"; then
+    log_warn "No tmux session for '${unique_name}', skipping"
     return 0
   fi
 
-  log_info "Stopping ${sid} (sending 'stop' to console)..."
-  tmux send-keys -t "${session}:${sid}" "stop" Enter
+  log_info "Stopping ${unique_name} (sending 'stop' to console)..."
+  tmux send-keys -t "$session" "stop" Enter
 
   local elapsed=0
-  while server_window_running "$kit_id" "$sid" && [[ $elapsed -lt 60 ]]; do
+  while server_session_running "$unique_name" && [[ $elapsed -lt 60 ]]; do
     sleep 2
     elapsed=$((elapsed + 2))
   done
 
-  if server_window_running "$kit_id" "$sid"; then
-    log_warn "Force closing tmux window for ${sid}"
-    tmux kill-window -t "${session}:${sid}" 2>/dev/null || true
+  if server_session_running "$unique_name"; then
+    log_warn "Force killing tmux session for ${unique_name}"
+    tmux kill-session -t "$session" 2>/dev/null || true
   else
-    log_ok "Stopped ${sid}"
-  fi
-}
-
-cleanup_kit_session() {
-  local kit_id="$1"
-  local session
-  session="$(kit_session "$kit_id")"
-  if tmux has-session -t "$session" 2>/dev/null; then
-    local count
-    count="$(tmux list-windows -t "$session" 2>/dev/null | wc -l | tr -d ' ')"
-    if [[ "$count" -eq 0 ]]; then
-      tmux kill-session -t "$session" 2>/dev/null || true
-    fi
+    log_ok "Stopped ${unique_name}"
   fi
 }
 
 print_console_help() {
   local kit_id="$1"
-  local session
-  session="$(kit_session "$kit_id")"
+  local server_json unique_name session
 
   echo ""
-  echo "  Live consoles (tmux):"
-  echo "    Attach all:     ./scripts/attach-kit.sh ${kit_id}"
-  echo "    Or:             tmux attach -t ${session}"
+  echo "  Live consoles (one tmux session per server):"
   echo ""
-  echo "  Inside tmux:"
-  echo "    Switch server:  Ctrl-b then window number (0, 1, 2...)"
-  echo "    Next window:    Ctrl-b n"
-  echo "    Previous:       Ctrl-b p"
-  echo "    Detach:         Ctrl-b d   (servers keep running)"
+  while IFS= read -r server_json; do
+    unique_name="$(server_unique_name "$kit_id" "$server_json")"
+    session="$(server_session "$unique_name")"
+    echo "    ${unique_name}"
+    echo "      attach:  ./scripts/attach-server.sh ${unique_name}"
+    echo "      or:      tmux attach -t ${session}"
+    echo ""
+  done < <(kit_servers "$kit_id")
+  echo "  Detach from any console: Ctrl-b d"
   echo ""
-  local sid
-  while IFS= read -r sid; do
-    echo "    ${sid}:  tmux attach -t ${session}:${sid}"
-  done < <(kit_servers "$kit_id" | jq -r '.id')
-  echo ""
+}
+
+attach_server_console() {
+  local unique_name="$1"
+  local session
+  session="$(server_session "$unique_name")"
+
+  if ! has_tmux; then
+    die "tmux is not installed. Install with: brew install tmux"
+  fi
+
+  if ! server_session_running "$unique_name"; then
+    die "No tmux session '${session}'. Is '${unique_name}' running?"
+  fi
+
+  echo "Attaching to ${unique_name} (Ctrl-b d to detach)..."
+  exec tmux attach -t "$session"
 }

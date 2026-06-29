@@ -4,5 +4,12 @@
     "file": "LuckPerms-Velocity.jar",
     "source": "luckperms",
     "platform": "velocity"
+  },
+  {
+    "name": "Simple Voice Chat",
+    "file": "SimpleVoiceChat-Velocity.jar",
+    "source": "modrinth",
+    "slug": "simple-voice-chat",
+    "loaders": ["velocity"]
   }
 ]

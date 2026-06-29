@@ -42,41 +42,38 @@ stop_server_background() {
 
 stop_kit() {
   local kit_id="$1"
-  local session
-  session="$(kit_session "$kit_id")"
+  local server_json unique_name
+
+  log_info "Stopping kit '${kit_id}'..."
+
+  while IFS= read -r server_json || [[ -n "${server_json}" ]]; do
+    [[ -z "$server_json" ]] && continue
+    unique_name="$(server_unique_name "$kit_id" "$server_json")"
+    if server_session_running "$unique_name"; then
+      stop_server_tmux "$unique_name"
+    fi
+  done < <(kit_servers "$kit_id")
+
+  # Kill any leftover Java listeners on this kit's ports (e.g. old folder names)
+  stop_kit_port_listeners "$kit_id"
 
   local velocity_servers=()
-  local paper_servers=()
-  local server_json
+  local backend_servers=()
+  local sid stype
 
-  while IFS= read -r server_json; do
-    local stype sid
+  while IFS= read -r server_json || [[ -n "${server_json}" ]]; do
+    [[ -z "$server_json" ]] && continue
     stype="$(echo "$server_json" | jq -r '.type')"
     sid="$(echo "$server_json" | jq -r '.id')"
     case "$stype" in
       velocity) velocity_servers+=("$sid") ;;
-      paper) paper_servers+=("$sid") ;;
+      paper|fabric) backend_servers+=("$sid") ;;
     esac
   done < <(kit_servers "$kit_id")
 
-  if tmux has-session -t "$session" 2>/dev/null; then
-    local sid
-    for sid in "${velocity_servers[@]}"; do
-      stop_server_tmux "$kit_id" "$sid"
-    done
-    for sid in "${paper_servers[@]}"; do
-      stop_server_tmux "$kit_id" "$sid"
-    done
-    tmux kill-session -t "$session" 2>/dev/null || true
-  else
-    local sid
-    for sid in "${velocity_servers[@]}"; do
-      stop_server_background "$kit_id" "$sid"
-    done
-    for sid in "${paper_servers[@]}"; do
-      stop_server_background "$kit_id" "$sid"
-    done
-  fi
+  for sid in ${velocity_servers[@]+"${velocity_servers[@]}"} ${backend_servers[@]+"${backend_servers[@]}"}; do
+    stop_server_background "$kit_id" "$sid"
+  done
 
   log_ok "Kit '${kit_id}' stopped"
 }

@@ -3,6 +3,7 @@ name: "Basic Velocity"
 description: "Velocity proxy only — add Paper backends later"
 servers:
   - id: velocity
+    name: proxy-main
     type: velocity
     port: 25565
 plugin_bundles:

@@ -1,0 +1,15 @@
+# Simple Voice Chat — unique UDP port per backend (auto-set by setup)
+port={{VOICE_PORT}}
+bind_address=
+voice_host=
+max_voice_distance=48.0
+whisper_distance=24.0
+codec=VOIP
+mtu_size=1275
+enable_groups=true
+allow_recording=true
+spectator_interaction=false
+spectator_player_possession=false
+force_voice_chat=false
+allow_pings=true
+use_natives=true

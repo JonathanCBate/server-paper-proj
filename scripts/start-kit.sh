@@ -28,15 +28,19 @@ start_server_background() {
     return 0
   fi
 
+  ensure_port_available "$(echo "$server_json" | jq -r '.port')" "$(server_unique_name "$kit_id" "$server_json")"
+
   log_info "Starting ${sid}..."
   (
     cd "$sdir"
-    nohup java -Xms"${MEMORY}" -Xmx"${MEMORY}" -jar server.jar --nogui \
+    local nogui=()
+    is_backend_server "$stype" && nogui=(--nogui)
+    nohup "$(server_java_bin)" -Xms"${MEMORY}" -Xmx"${MEMORY}" -jar server.jar "${nogui[@]}" \
       >> "${sdir}/console.log" 2>&1 &
     echo $! > "$pid_file"
   )
 
-  if [[ "$stype" == "paper" ]]; then
+  if is_backend_server "$stype"; then
     wait_for_server_ready "$log_file" 240 || true
   else
     sleep 5
@@ -50,10 +54,12 @@ start_kit() {
   local memory="${MEMORY:-2G}"
   MEMORY="$memory"
 
+  verify_kit_versions "$kit_id"
+
   local mode
   mode="$(resolve_console_mode)"
 
-  local paper_servers=()
+  local backend_servers=()
   local velocity_servers=()
 
   local server_json
@@ -61,28 +67,37 @@ start_kit() {
     local stype
     stype="$(echo "$server_json" | jq -r '.type')"
     case "$stype" in
-      paper) paper_servers+=("$server_json") ;;
+      paper|fabric) backend_servers+=("$server_json") ;;
       velocity) velocity_servers+=("$server_json") ;;
     esac
   done < <(kit_servers "$kit_id")
 
   local entry
-  for entry in "${paper_servers[@]}"; do
+  for entry in ${backend_servers[@]+"${backend_servers[@]}"}; do
     if [[ "$mode" == "tmux" ]]; then
+      local unique_name log_file
+      unique_name="$(server_unique_name "$kit_id" "$entry")"
+      log_file="$(server_dir_from_json "$kit_id" "$entry")/logs/latest.log"
       start_server_tmux "$kit_id" "$entry"
-      local sid log_file
-      sid="$(echo "$entry" | jq -r '.id')"
-      log_file="$(server_dir "$kit_id" "$sid")/logs/latest.log"
-      wait_for_server_ready "$log_file" 240 || true
+      if wait_for_server_ready "$log_file" 90 "$unique_name"; then
+        log_ok "${unique_name} is ready"
+      else
+        log_ok "${unique_name} launched in tmux (still starting — attach to watch)"
+      fi
+      echo "           ./scripts/attach-server.sh ${unique_name}"
     else
       start_server_background "$kit_id" "$entry"
     fi
   done
 
-  for entry in "${velocity_servers[@]}"; do
+  for entry in ${velocity_servers[@]+"${velocity_servers[@]}"}; do
     if [[ "$mode" == "tmux" ]]; then
+      local unique_name
+      unique_name="$(server_unique_name "$kit_id" "$entry")"
       start_server_tmux "$kit_id" "$entry"
       sleep 5
+      log_ok "${unique_name} launched in tmux"
+      echo "           ./scripts/attach-server.sh ${unique_name}"
     else
       start_server_background "$kit_id" "$entry"
     fi
@@ -91,13 +106,13 @@ start_kit() {
   echo ""
   log_ok "Kit '${kit_id}' is running!"
   local connect_port
-  connect_port="$(kit_manifest_json "$kit_id" | jq -r '[.servers[] | select(.type=="velocity" or .type=="paper")][0].port')"
+  connect_port="$(kit_manifest_json "$kit_id" | jq -r '[.servers[] | select(.type=="velocity" or .type=="paper" or .type=="fabric")][0].port')"
   echo ""
   echo "  Connect: localhost:${connect_port}"
   if [[ "$mode" == "tmux" ]]; then
     print_console_help "$kit_id"
   else
-    echo "  Logs:    ${SERVERS_DIR}/${kit_id}/<server>/console.log"
+    echo "  Logs:    ${SERVERS_DIR}/${kit_id}/<your-server-name>/console.log"
   fi
   echo "  Stop:    ./scripts/stop-kit.sh ${kit_id}"
   echo ""
@@ -105,6 +120,9 @@ start_kit() {
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   load_env
+  resolve_mc_version
+  resolve_velocity_version
+  require_java_for_mc "$MC_VERSION"
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --tmux) CONSOLE_MODE=tmux; shift ;;
