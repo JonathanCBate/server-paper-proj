@@ -123,6 +123,7 @@ ensure_env_file() {
 MC_VERSION=latest
 VELOCITY_VERSION=
 MEMORY=2G
+CONSOLE_MODE=tmux
 EOF
   fi
   log_info "Created ${env_file}"
@@ -135,6 +136,7 @@ save_env_file() {
 MC_VERSION=${MC_VERSION}
 VELOCITY_VERSION=${VELOCITY_VERSION:-}
 MEMORY=${MEMORY}
+CONSOLE_MODE=${CONSOLE_MODE:-tmux}
 EOF
 }
 
@@ -149,6 +151,7 @@ load_env() {
   MC_VERSION="${MC_VERSION:-latest}"
   VELOCITY_VERSION="${VELOCITY_VERSION:-}"
   MEMORY="${MEMORY:-2G}"
+  CONSOLE_MODE="${CONSOLE_MODE:-tmux}"
 }
 
 yaml_to_json() {

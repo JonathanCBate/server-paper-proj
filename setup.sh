@@ -33,6 +33,8 @@ Options:
   --setup-only       Download and configure without starting servers
   --mc-version VER   Minecraft version or 'latest' (default: latest)
   --memory MEM       JVM heap per server (default: 2G)
+  --tmux             Start servers in tmux windows (default)
+  --background       Start servers in background without tmux
   --no-eula          Skip writing eula=true (not recommended)
   -h, --help         Show this help
 
@@ -50,6 +52,8 @@ parse_args() {
       --no-eula) SKIP_EULA=true; shift ;;
       --mc-version) MC_VERSION="$2"; shift 2 ;;
       --memory) MEMORY="$2"; shift 2 ;;
+      --tmux) CONSOLE_MODE=tmux; shift ;;
+      --background) CONSOLE_MODE=background; shift ;;
       -h|--help) usage; exit 0 ;;
       -*) die "Unknown option: $1" ;;
       *) positional+=("$1"); shift ;;
@@ -74,7 +78,7 @@ main() {
   resolve_mc_version
   require_java_for_mc "$MC_VERSION"
   save_env_file
-  export MC_VERSION MEMORY VELOCITY_VERSION
+  export MC_VERSION MEMORY VELOCITY_VERSION CONSOLE_MODE
   log_info "Setting up kit: ${SELECTED_KIT} (MC ${MC_VERSION}, ${MEMORY}/server)"
   apply_kit "$SELECTED_KIT"
 
