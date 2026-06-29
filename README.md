@@ -92,11 +92,35 @@ Skip the wizard by passing a kit name:
 # Start after setup-only
 ./scripts/start-kit.sh paper-basic
 
+# Attach to live consoles (tmux — one window per server/proxy)
+./scripts/attach-kit.sh velocity-multi
+./scripts/attach-kit.sh velocity-multi paper-lobby   # one server only
+
 # Stop all servers in a kit
 ./scripts/stop-kit.sh paper-basic
 ```
 
-Logs: `servers/<kit>/<server>/console.log`
+### Live consoles (tmux)
+
+By default, servers start in a **tmux** session with one window per server/proxy — like `screen`, but easier to manage.
+
+| Command | What it does |
+|---------|----------------|
+| `./scripts/attach-kit.sh <kit>` | Attach to all servers — switch with `Ctrl-b` then `0`, `1`, `2` |
+| `./scripts/attach-kit.sh <kit> <server>` | Attach to one server (e.g. `paper-lobby`) |
+| `Ctrl-b d` | Detach — servers keep running |
+| `Ctrl-b n` / `Ctrl-b p` | Next / previous server window |
+
+Install tmux if needed: `brew install tmux`
+
+For headless/background mode (logs only in `console.log`):
+
+```bash
+./scripts/start-kit.sh paper-basic --background
+# or set CONSOLE_MODE=background in .env
+```
+
+Logs (background mode): `servers/<kit>/<server>/console.log`
 
 ## Project layout
 
