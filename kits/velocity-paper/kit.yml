@@ -1,0 +1,14 @@
+id: velocity-paper
+name: "Velocity + Paper"
+description: "Proxy with one Paper backend — lobby-style setup"
+default_server: paper-lobby
+servers:
+  - id: velocity
+    type: velocity
+    port: 25565
+  - id: paper-lobby
+    type: paper
+    port: 25566
+plugin_bundles:
+  velocity: velocity
+  paper: paper

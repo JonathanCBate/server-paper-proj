@@ -1,0 +1,14 @@
+server-name: {{SERVER_NAME}}
+storage-method: h2
+data:
+  address: 'jdbc:h2:file:{{LP_DB_PATH}};AUTO_SERVER=TRUE'
+sync-minutes: -1
+watch-files: true
+messaging-service: pluginmsg
+auto-op: false
+commands-allow-op: true
+primary-group-calculation: parents-by-weight
+argument-based-command-permissions: false
+vault-unsafe-lookups: false
+use-server-uuid-cache: true
+verbose: false

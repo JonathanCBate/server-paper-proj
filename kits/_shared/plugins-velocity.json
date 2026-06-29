@@ -1,0 +1,8 @@
+[
+  {
+    "name": "LuckPerms",
+    "file": "LuckPerms-Velocity.jar",
+    "source": "luckperms",
+    "platform": "velocity"
+  }
+]

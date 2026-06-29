@@ -1,0 +1,9 @@
+id: paper-basic
+name: "Basic Paper"
+description: "Single Paper server — good for a small survival SMP"
+servers:
+  - id: paper
+    type: paper
+    port: 25565
+plugin_bundles:
+  paper: paper

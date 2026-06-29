@@ -1,0 +1,7 @@
+# This is a template - forwarding secret is injected at setup time
+_version: 28
+proxies:
+  velocity:
+    enabled: true
+    online-mode: true
+    secret: '{{FORWARDING_SECRET}}'

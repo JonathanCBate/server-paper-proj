@@ -1,0 +1,68 @@
+# ── Generated runtime (setup output) ─────────────────────────────────────────
+servers/
+build/
+dist/
+out/
+
+# ── Downloaded binaries ──────────────────────────────────────────────────────
+*.jar
+*.jar.old
+
+# ── Secrets and local config ─────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── OS-specific (non-universal) ──────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Editor / IDE (non-universal) ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.iml
+.project
+.classpath
+.settings/
+
+# ── Shell / misc temp files ───────────────────────────────────────────────────
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# ── Minecraft runtime inside servers/ (safety net if paths change) ─────────────
+servers/**/logs/
+servers/**/crash-reports/
+servers/**/cache/
+servers/**/libraries/
+servers/**/versions/
+servers/**/world/
+servers/**/world_*/
+servers/**/world_nether/
+servers/**/world_the_end/
+servers/**/plugins/
+servers/**/config/
+servers/**/.pids/
+servers/**/*.pid
+servers/**/console.log
+servers/**/eula.txt
+servers/**/forwarding.secret
+servers/**/usercache.json
+servers/**/banned-*.json
+servers/**/ops.json
+servers/**/whitelist.json
+servers/**/session.lock
+servers/**/level.dat*

@@ -1,0 +1,36 @@
+[
+  {
+    "name": "LuckPerms",
+    "file": "LuckPerms-Bukkit.jar",
+    "source": "luckperms",
+    "platform": "bukkit"
+  },
+  {
+    "name": "Chunky",
+    "file": "Chunky.jar",
+    "source": "modrinth",
+    "slug": "chunky",
+    "loaders": ["paper"]
+  },
+  {
+    "name": "EssentialsX",
+    "file": "EssentialsX.jar",
+    "source": "modrinth",
+    "slug": "essentialsx",
+    "loaders": ["paper"]
+  },
+  {
+    "name": "Vault",
+    "file": "Vault.jar",
+    "source": "github",
+    "repo": "MilkBowl/Vault",
+    "asset": "Vault.jar"
+  },
+  {
+    "name": "PlaceholderAPI",
+    "file": "PlaceholderAPI.jar",
+    "source": "modrinth",
+    "slug": "placeholderapi",
+    "loaders": ["paper"]
+  }
+]

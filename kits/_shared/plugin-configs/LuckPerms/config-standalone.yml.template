@@ -1,0 +1,18 @@
+server-name: {{SERVER_NAME}}
+storage-method: h2
+data:
+  address: './luckperms'
+sync-minutes: -1
+watch-files: true
+messaging-service: auto
+auto-op: false
+commands-allow-op: true
+primary-group-calculation: parents-by-weight
+argument-based-command-permissions: false
+vault-unsafe-lookups: false
+use-server-uuid-cache: true
+verbose: false
+world-rewrite:
+  world: world
+  world_nether: world_nether
+  world_the_end: world_the_end
