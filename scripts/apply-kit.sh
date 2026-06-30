@@ -187,6 +187,8 @@ apply_kit() {
 
     if is_backend_server "$stype"; then
       configure_voicechat "$sdir" "$sport"
+      configure_floodgate "$kit_id" "$sdir" "$stype"
+      configure_geyser "$kit_id" "$sdir" "$stype" "$sport"
       write_eula "$sdir"
       if [[ -f "${sdir}/server.properties" ]]; then
         sed -i.bak "s/^server-port=.*/server-port=${sport}/" "${sdir}/server.properties"
@@ -201,10 +203,16 @@ apply_kit() {
       fi
     fi
 
+    if [[ "$stype" == "velocity" ]]; then
+      configure_floodgate "$kit_id" "$sdir" "$stype"
+      configure_geyser "$kit_id" "$sdir" "$stype" "$sport"
+    fi
+
     log_ok "Configured ${unique_name} at ${sdir}"
   done < <(kit_servers "$kit_id")
 
   verify_kit_versions "$kit_id"
+  allow_kit_firewall_ports "$kit_id"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -1,0 +1,10 @@
+id: fabric-basic
+name: "Basic Fabric"
+description: "Single optimized Fabric survival server (Lithium, FerriteCore)"
+servers:
+  - id: fabric
+    name: fabric-main
+    type: fabric
+    port: 25565
+mod_bundles:
+  fabric: fabric-standalone

@@ -41,6 +41,13 @@
     "loaders": ["paper"]
   },
   {
+    "name": "Geyser",
+    "file": "Geyser-Spigot.jar",
+    "source": "modrinth",
+    "slug": "geyser",
+    "loaders": ["paper"]
+  },
+  {
     "name": "Floodgate",
     "file": "floodgate-spigot.jar",
     "source": "hangar",

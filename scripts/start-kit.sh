@@ -105,10 +105,12 @@ start_kit() {
 
   echo ""
   log_ok "Kit '${kit_id}' is running!"
-  local connect_port
+  local connect_port geyser_port
   connect_port="$(kit_manifest_json "$kit_id" | jq -r '[.servers[] | select(.type=="velocity" or .type=="paper" or .type=="fabric")][0].port')"
+  geyser_port="$(default_geyser_port "$connect_port")"
   echo ""
-  echo "  Connect: localhost:${connect_port}"
+  echo "  Java connect:    localhost:${connect_port}"
+  echo "  Bedrock connect: <your-ip>:${geyser_port}"
   if [[ "$mode" == "tmux" ]]; then
     print_console_help "$kit_id"
   else
@@ -116,6 +118,7 @@ start_kit() {
   fi
   echo "  Stop:    ./scripts/stop-kit.sh ${kit_id}"
   echo ""
+  allow_kit_firewall_ports "$kit_id"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

@@ -16,7 +16,7 @@ read_prompt() {
 
 prompt_banner() {
   echo ""
-  echo "  Paper Server Setup"
+  echo "  Minecraft Server Setup"
   echo "  ──────────────────"
   echo ""
 }

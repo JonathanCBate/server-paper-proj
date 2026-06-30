@@ -401,11 +401,20 @@ yaml_to_json() {
 }
 
 discover_kits() {
-  local kit
+  local preferred=(paper-basic fabric-basic velocity-basic velocity-paper velocity-multi velocity-fabric)
+  local kit p known
+  for kit in "${preferred[@]}"; do
+    [[ -f "${KITS_DIR}/${kit}/kit.yml" ]] && echo "$kit"
+  done
   for kit_dir in "${KITS_DIR}"/*/; do
     kit="$(basename "$kit_dir")"
     [[ "$kit" == "_shared" ]] && continue
-    [[ -f "${kit_dir}/kit.yml" ]] && echo "$kit"
+    [[ -f "${kit_dir}/kit.yml" ]] || continue
+    known=false
+    for p in "${preferred[@]}"; do
+      [[ "$p" == "$kit" ]] && known=true
+    done
+    $known || echo "$kit"
   done | sort
 }
 
@@ -740,6 +749,234 @@ default_voice_port() {
   local mc_port="$1"
   # Unique UDP port per backend: 25566→24454, 25567→24455, etc.
   echo $((24454 + mc_port - 25566))
+}
+
+default_geyser_port() {
+  local java_port="$1"
+  # Unique Bedrock UDP port per entry point: 25565→19132, 25566→19133, etc.
+  echo $((19132 + java_port - 25565))
+}
+
+geyser_installed() {
+  local sdir="$1" f
+  for f in "${sdir}/mods/"*[Gg]eyser* "${sdir}/plugins/"*[Gg]eyser*; do
+    [[ -e "$f" ]] && return 0
+  done
+  return 1
+}
+
+geyser_config_path() {
+  local sdir="$1"
+  local stype="$2"
+  case "$stype" in
+    paper) echo "${sdir}/plugins/Geyser-Spigot/config.yml" ;;
+    velocity) echo "${sdir}/plugins/Geyser-Velocity/config.yml" ;;
+    fabric) echo "${sdir}/config/Geyser-Fabric/config.yml" ;;
+    *) return 1 ;;
+  esac
+}
+
+kit_has_velocity() {
+  local kit_id="$1"
+  local server_json stype
+  while IFS= read -r server_json; do
+    stype="$(echo "$server_json" | jq -r '.type')"
+    [[ "$stype" == "velocity" ]] && return 0
+  done < <(kit_servers "$kit_id")
+  return 1
+}
+
+geyser_runs_on_server() {
+  local kit_id="$1"
+  local stype="$2"
+  if [[ "$stype" == "velocity" ]]; then
+    return 0
+  fi
+  if is_backend_server "$stype" && ! kit_has_velocity "$kit_id"; then
+    return 0
+  fi
+  return 1
+}
+
+render_geyser_config() {
+  local template="$1"
+  local dest="$2"
+  local geyser_port="$3"
+  local java_port="$4"
+  sed -e "s|{{GEYSER_PORT}}|${geyser_port}|g" \
+      -e "s|{{JAVA_PORT}}|${java_port}|g" \
+      "$template" > "$dest"
+}
+
+configure_geyser() {
+  local kit_id="$1"
+  local sdir="$2"
+  local stype="$3"
+  local java_port="$4"
+  local template dest geyser_port
+
+  geyser_runs_on_server "$kit_id" "$stype" || return 0
+  geyser_installed "$sdir" || return 0
+
+  geyser_port="$(default_geyser_port "$java_port")"
+  dest="$(geyser_config_path "$sdir" "$stype")" || return 0
+  template="${SHARED_DIR}/geyser/${stype}-config.yml.template"
+  [[ -f "$template" ]] || return 0
+
+  ensure_dir "$(dirname "$dest")"
+  if [[ ! -f "$dest" ]]; then
+    render_geyser_config "$template" "$dest" "$geyser_port" "$java_port"
+    log_info "Geyser Bedrock UDP ${geyser_port} → ${dest#${sdir}/}"
+  else
+    sed -i.bak -E \
+      -e "s/^  port: .*/  port: ${geyser_port}/" \
+      -e "/^remote:/,/^[^ ]/ s/^  port: .*/  port: ${java_port}/" \
+      -e "s/^  auth-type: .*/  auth-type: floodgate/" \
+      "$dest"
+    if grep -q '^floodgate-key-file:' "$dest"; then
+      sed -i.bak 's|^floodgate-key-file:.*|floodgate-key-file: ../floodgate/key.pem|' "$dest"
+    else
+      printf '\nfloodgate-key-file: ../floodgate/key.pem\n' >> "$dest"
+    fi
+    rm -f "${dest}.bak"
+    log_info "Geyser ports updated (Bedrock UDP ${geyser_port}, Java ${java_port})"
+  fi
+}
+
+floodgate_key_file() {
+  echo "${SERVERS_DIR}/${1}/.floodgate/key.pem"
+}
+
+floodgate_installed() {
+  local sdir="$1" f
+  for f in "${sdir}/mods/"*[Ff]loodgate* "${sdir}/plugins/"*[Ff]loodgate*; do
+    [[ -e "$f" ]] && return 0
+  done
+  return 1
+}
+
+floodgate_key_dest() {
+  local sdir="$1"
+  local stype="$2"
+  case "$stype" in
+    paper|velocity) echo "${sdir}/plugins/floodgate/key.pem" ;;
+    fabric) echo "${sdir}/config/floodgate/key.pem" ;;
+    *) return 1 ;;
+  esac
+}
+
+floodgate_config_dest() {
+  local sdir="$1"
+  local stype="$2"
+  case "$stype" in
+    paper|velocity) echo "${sdir}/plugins/floodgate/config.yml" ;;
+    fabric) echo "${sdir}/config/floodgate/config.yml" ;;
+    *) return 1 ;;
+  esac
+}
+
+ensure_floodgate_key() {
+  local kit_id="$1"
+  local key_file
+  key_file="$(floodgate_key_file "$kit_id")"
+  ensure_dir "$(dirname "$key_file")"
+  if [[ ! -f "$key_file" ]]; then
+    if ! command -v openssl >/dev/null 2>&1; then
+      die "openssl is required to generate the shared Floodgate key.pem"
+    fi
+    openssl genrsa -out "$key_file" 2048 >/dev/null 2>&1
+    chmod 600 "$key_file"
+    log_info "Generated shared Floodgate key for kit ${kit_id}"
+  fi
+}
+
+configure_floodgate() {
+  local kit_id="$1"
+  local sdir="$2"
+  local stype="$3"
+  local key_src dest config_dest proxy_config
+
+  floodgate_installed "$sdir" || return 0
+
+  ensure_floodgate_key "$kit_id"
+  key_src="$(floodgate_key_file "$kit_id")"
+  dest="$(floodgate_key_dest "$sdir" "$stype")" || return 0
+  ensure_dir "$(dirname "$dest")"
+  cp "$key_src" "$dest"
+  chmod 600 "$dest"
+  log_info "Floodgate key → ${dest#${sdir}/}"
+
+  if [[ "$stype" == "velocity" ]]; then
+    config_dest="$(floodgate_config_dest "$sdir" "$stype")"
+    proxy_config="${SHARED_DIR}/floodgate/velocity-config.yml"
+    ensure_dir "$(dirname "$config_dest")"
+    if [[ ! -f "$config_dest" && -f "$proxy_config" ]]; then
+      cp "$proxy_config" "$config_dest"
+      log_info "Floodgate proxy config → ${config_dest#${sdir}/}"
+    elif [[ -f "$config_dest" ]]; then
+      sed -i.bak 's/^send-floodgate-data: false/send-floodgate-data: true/' "$config_dest"
+      grep -q '^send-floodgate-data:' "$config_dest" || echo 'send-floodgate-data: true' >> "$config_dest"
+      rm -f "${config_dest}.bak"
+    fi
+  fi
+}
+
+collect_kit_firewall_ports() {
+  local kit_id="$1"
+  local has_velocity=false server_json stype sport sdir
+
+  kit_has_velocity "$kit_id" && has_velocity=true
+
+  while IFS= read -r server_json || [[ -n "${server_json}" ]]; do
+    [[ -z "$server_json" ]] && continue
+    stype="$(echo "$server_json" | jq -r '.type')"
+    sport="$(echo "$server_json" | jq -r '.port')"
+    sdir="$(server_dir_from_json "$kit_id" "$server_json")"
+
+    if [[ "$stype" == "velocity" ]]; then
+      echo "tcp:${sport}"
+      geyser_installed "$sdir" && echo "udp:$(default_geyser_port "$sport")"
+      voicechat_installed "$sdir" && echo "udp:$(default_voice_port "$sport")"
+    elif is_backend_server "$stype"; then
+      if ! $has_velocity; then
+        echo "tcp:${sport}"
+        geyser_installed "$sdir" && echo "udp:$(default_geyser_port "$sport")"
+      fi
+      voicechat_installed "$sdir" && echo "udp:$(default_voice_port "$sport")"
+    fi
+  done < <(kit_servers "$kit_id")
+}
+
+allow_kit_firewall_ports() {
+  local kit_id="$1"
+  local rule proto port seen=""
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    log_info "ufw not installed — skipping firewall (fine for local/macOS dev)"
+    return 0
+  fi
+
+  log_info "Configuring firewall (sudo ufw allow) for kit: ${kit_id}"
+
+  while IFS= read -r rule; do
+    [[ -z "$rule" ]] && continue
+    [[ " ${seen} " == *" ${rule} "* ]] && continue
+    seen="${seen} ${rule}"
+    proto="${rule%%:*}"
+    port="${rule##*:}"
+
+    if sudo ufw status 2>/dev/null | grep -qiE "${port}/${proto}[[:space:]].*ALLOW"; then
+      log_info "Firewall: ${port}/${proto} already allowed"
+      continue
+    fi
+
+    log_info "Firewall: allowing ${port}/${proto}..."
+    if sudo ufw allow "${port}/${proto}"; then
+      log_ok "Firewall: allowed ${port}/${proto}"
+    else
+      log_warn "Firewall: could not allow ${port}/${proto} (sudo ufw failed)"
+    fi
+  done < <(collect_kit_firewall_ports "$kit_id" | sort -u)
 }
 
 voicechat_installed() {

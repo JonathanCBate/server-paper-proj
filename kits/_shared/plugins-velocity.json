@@ -11,5 +11,20 @@
     "source": "modrinth",
     "slug": "simple-voice-chat",
     "loaders": ["velocity"]
+  },
+  {
+    "name": "Geyser",
+    "file": "Geyser-Velocity.jar",
+    "source": "modrinth",
+    "slug": "geyser",
+    "loaders": ["velocity"]
+  },
+  {
+    "name": "Floodgate",
+    "file": "floodgate-velocity.jar",
+    "source": "hangar",
+    "namespace": "GeyserMC",
+    "slug": "Floodgate",
+    "platform": "VELOCITY"
   }
 ]

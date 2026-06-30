@@ -30,13 +30,13 @@
     "loaders": ["fabric"]
   },
   {
-    "name": "FabricProxy-Lite",
-    "slug": "fabricproxy-lite",
+    "name": "Simple Voice Chat",
+    "slug": "simple-voice-chat",
     "loaders": ["fabric"]
   },
   {
-    "name": "Simple Voice Chat",
-    "slug": "simple-voice-chat",
+    "name": "Geyser",
+    "slug": "geyser",
     "loaders": ["fabric"]
   },
   {

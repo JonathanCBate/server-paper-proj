@@ -7,4 +7,4 @@ servers:
     type: paper
     port: 25565
 plugin_bundles:
-  paper: paper
+  paper: paper-standalone

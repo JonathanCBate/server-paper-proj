@@ -26,8 +26,9 @@ Interactive (no arguments):
 
 Non-interactive:
   ./setup.sh paper-basic
+  ./setup.sh fabric-basic
   ./setup.sh velocity-multi --setup-only
-  ./setup.sh paper-basic --memory 4G --mc-version 1.21.1
+  ./setup.sh fabric-basic --memory 4G --mc-version 26.1.2
 
 Options:
   --setup-only       Download and configure without starting servers

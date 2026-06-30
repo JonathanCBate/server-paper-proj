@@ -49,6 +49,7 @@ No kit name required — just run the script and follow the prompts.
 | Kit | Description | Connect |
 |-----|-------------|---------|
 | `paper-basic` | Single Paper survival server | `localhost:25565` |
+| `fabric-basic` | Single optimized Fabric survival server | `localhost:25565` |
 | `velocity-basic` | Velocity proxy only | `localhost:25565` |
 | `velocity-paper` | Velocity + one Paper backend (lobby) | `localhost:25565` |
 | `velocity-multi` | Velocity + lobby + survival Paper backends | `localhost:25565` |
@@ -64,17 +65,21 @@ No kit name required — just run the script and follow the prompts.
 - **Vault** — economy/permissions API
 - **PlaceholderAPI** — placeholders
 - **Simple Voice Chat** — proximity voice chat (players need the [client mod](https://modrinth.com/mod/simple-voice-chat) too)
+- **Geyser** — Bedrock Edition players can join (UDP port `19132` by default)
+- **Floodgate** — Bedrock players join without a Java account (paired with Geyser)
 
 ### Velocity proxy
 
 - **LuckPerms-Velocity** — proxy-side permissions
 - **Simple Voice Chat** — routes voice between backend servers on a network
+- **Geyser** — Bedrock players join through the proxy (install on proxy only, not backends)
+- **Floodgate** — Bedrock auth on the proxy; same `key.pem` synced to backends
 
 Customize plugins in [`kits/_shared/plugins-paper.json`](kits/_shared/plugins-paper.json) and [`kits/_shared/plugins-velocity.json`](kits/_shared/plugins-velocity.json).
 
-### Fabric servers (`velocity-fabric`)
+### Fabric servers (`fabric-basic`, `velocity-fabric`)
 
-Server-side optimization mods (players join with a **vanilla client** matching your MC version — no mods required on the client):
+Server-side optimization mods (players join with a **vanilla client** matching your MC version — no mods required on the client except Simple Voice Chat if you use voice):
 
 | Mod | Purpose |
 |-----|---------|
@@ -84,10 +89,26 @@ Server-side optimization mods (players join with a **vanilla client** matching y
 | **Krypton** | Network stack optimizations |
 | **BadOptimizations** | Miscellaneous engine fixes |
 | **Chunky** | World pre-generation (`/chunky start`) |
-| **FabricProxy-Lite** | Velocity modern forwarding on Fabric backends |
+| **FabricProxy-Lite** | Velocity modern forwarding (`velocity-fabric` only) |
 | **Simple Voice Chat** | Proximity voice chat (install the client mod to talk) |
+| **Geyser** | Bedrock Edition crossplay (UDP; on proxy only for Velocity kits) |
+| **Floodgate** | Bedrock players without Java accounts (shared `key.pem` per kit) |
 
-Customize mods in [`kits/_shared/mods-fabric.json`](kits/_shared/mods-fabric.json).
+Customize mods in [`kits/_shared/mods-fabric-standalone.json`](kits/_shared/mods-fabric-standalone.json) (standalone) or [`kits/_shared/mods-fabric.json`](kits/_shared/mods-fabric.json) (Velocity network).
+
+### Firewall (Linux VPS)
+
+During `./setup.sh` and `./scripts/start-kit.sh`, the scripts run `sudo ufw allow` for every port players need:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| `25565` (or your kit's Java port) | TCP | Java Edition clients |
+| `19132` (or derived Bedrock port) | UDP | Bedrock Edition via Geyser |
+| `24454+` | UDP | Simple Voice Chat per server |
+
+Velocity kits only open the **proxy** Java port publicly — backend ports stay on localhost. Voice chat UDP ports for backends are still opened when voice chat is installed.
+
+Requires `ufw` on the host (skipped automatically on macOS). You may be prompted for your sudo password.
 
 **8 GB host tip:** allocate ~`1G` to the proxy and ~`5G`–`6G` per Fabric backend (`--memory 5G`), or run the proxy on a separate small VPS.
 
@@ -97,6 +118,7 @@ Skip the wizard by passing a kit name:
 
 ```bash
 ./setup.sh paper-basic
+./setup.sh fabric-basic --setup-only
 ./setup.sh velocity-multi --setup-only
 ./setup.sh paper-basic --memory 4G --mc-version latest
 ./setup.sh paper-basic --mc-version 1.21.11
@@ -236,6 +258,10 @@ lp sync    # force a full sync if needed
 ### Standalone Paper (`paper-basic`)
 
 Single-server kits use a local LuckPerms database — no network sync needed.
+
+### Standalone Fabric (`fabric-basic`)
+
+Single Fabric server with optimization mods — no proxy, no FabricProxy-Lite. Connect directly at `localhost:25565` with a vanilla client.
 
 ### Upgrading to MySQL (optional)
 
